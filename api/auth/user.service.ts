@@ -12,6 +12,8 @@ export type User = {
   address: string;
   gender: string;
   date_of_birth: string;
+  access_token: string;
+  refresh_token: string;
 };
 
 export type LoginResponse = {
@@ -64,6 +66,8 @@ export const loginUser = async (
       address: "",
       gender: "",
       date_of_birth: "",
+      access_token: access_token,
+      refresh_token: refresh_token,
     };
 
     await AsyncStorage.setItem("user", JSON.stringify(user));
@@ -183,45 +187,16 @@ export const getProfile = async (): Promise<any | null> => {
   }
 };
 // app/api/auth/user.service.ts
-export const updateProfile = async (
-  userId: number,
-  formData: FormData,
-  isFileUpload: boolean = true,
-): Promise<any> => {
-  try {
-    const config: any = {};
+export const updateProfile = async (formData: FormData) => {
+  const accessToken = await AsyncStorage.getItem("access_token");
+  const response = await fetch(`${apiClient.defaults.baseURL}/users/me`, {
+    method: "PATCH",
+    body: formData,
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
 
-    if (isFileUpload) {
-      config.headers = {
-        "Content-Type": "multipart/form-data",
-      };
-    }
-
-    const response = await apiClient.patch(
-      `/users/${userId}`,
-      formData,
-      config,
-    );
-
-    if (response.data?.success) {
-      // Update stored user data
-      const updatedUser = response.data.data;
-      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-      await AsyncStorage.setItem("role", updatedUser.role);
-      return {
-        success: true,
-        data: updatedUser,
-      };
-    }
-    return {
-      success: false,
-      error: response.data?.message || "Update failed",
-    };
-  } catch (error: any) {
-    console.error("Update profile error:", error.response?.data);
-    return {
-      success: false,
-      error: error.response?.data?.message || "Update failed",
-    };
-  }
+  return response.json();
 };
